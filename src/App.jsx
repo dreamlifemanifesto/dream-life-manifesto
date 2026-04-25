@@ -177,18 +177,13 @@ export default function App(){
       if(q.includes(key)){ids=val;break;}
     }
     if(!ids){
-      // fallback — use picsum with hash
       const hash = kitQ.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
       const results = Array.from({length:9},(_,i)=>`https://picsum.photos/seed/${hash+i*7}/300/300`);
-      setTimeout(()=>{setKitRes(results);setKitLoad(false);if(kitRef.current)kitRef.current.scrollIntoView({behavior:"smooth",block:"nearest"});},600);
+      setTimeout(()=>{setKitRes(results);setKitLoad(false);},500);
       return;
     }
     const results = ids.slice(0,9).map(id=>`https://images.unsplash.com/photo-${id}?w=300&q=80&fit=crop`);
-    setTimeout(()=>{
-      setKitRes(results);
-      setKitLoad(false);
-      if(kitRef.current) kitRef.current.scrollIntoView({behavior:"smooth",block:"nearest"});
-    },600);
+    setTimeout(()=>{setKitRes(results);setKitLoad(false);},500);
   }
 
   const today=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
@@ -200,6 +195,7 @@ export default function App(){
   const revCats=CATS.filter(c=>{const d=getD(c.id);const l=getL(c.id);return d.photos.length+d.inspo.length>0||l.some(v=>v.trim());});
 
   function navTo(v){setShowKit(false);setKitQ("");setKitRes([]);if(v==="review")setRevIdx(0);setScreen(v);}
+  function openCat(cat){setActiveCat(cat);setShowKit(false);setKitQ("");setKitRes([]);setScreen("cat");window.scrollTo({top:0,behavior:"instant"});}
 
   // If already set up, go straight to home
   const startScreen = uName ? "home" : "onboard";
@@ -259,7 +255,6 @@ export default function App(){
     const all=[...d.photos,...d.inspo];
     const filled=l.filter(v=>v.trim()).length;
     const pct=Math.round((filled/5)*100);
-    if(typeof window!=="undefined")window.scrollTo(0,0);
     return(
       <>
       <style>{BASE}</style>
@@ -326,7 +321,7 @@ export default function App(){
             <div style={{display:"flex",gap:10,marginBottom:16}}>
               <input type="file" accept="image/*" ref={photoRef} onChange={e=>{if(e.target.files[0])addPhoto(cat.id,e.target.files[0]);e.target.value="";}} style={{display:"none"}}/>
               <Btn onClick={()=>photoRef.current.click()} style={{flex:1,background:BLT,color:BDK,fontSize:13,padding:"11px 12px"}}>📷 Camera Roll</Btn>
-              <Btn onClick={()=>setShowKit(s=>!s)} style={{flex:1,background:showKit?BDK:BLT,color:showKit?WH:BDK,fontSize:13,padding:"11px 12px"}}>🔍 Search Photos</Btn>
+              <Btn onClick={()=>{setShowKit(s=>!s);setKitRes([]);setKitQ("");}} style={{flex:1,background:showKit?BDK:BLT,color:showKit?WH:BDK,fontSize:13,padding:"11px 12px"}}>🔍 Search Photos</Btn>
             </div>
 
             {/* Search kit */}
@@ -334,8 +329,8 @@ export default function App(){
               <div ref={kitRef} className="fade" style={{background:WH,border:`1px solid ${BD}`,borderRadius:16,padding:18,marginBottom:16}}>
                 <p style={{fontWeight:700,fontSize:13,color:BDK,marginBottom:12}}>Find inspiration photos</p>
                 <div style={{display:"flex",gap:8,marginBottom:14}}>
-                  <input value={kitQ} onChange={e=>setKitQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPhotos()} placeholder={`Search "${cat.label}" photos...`} style={{flex:1,background:BG,border:`1.5px solid ${BD}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",color:TX}}/>
-                  <Btn onClick={searchPhotos} style={{background:BDK,color:WH,padding:"11px 18px",fontSize:14,borderRadius:10}}>{kitLoad?"...":"Go"}</Btn>
+                  <input value={kitQ} onChange={e=>setKitQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();searchPhotos();}}} placeholder={`e.g. beach, luxury home...`} style={{flex:1,background:BG,border:`1.5px solid ${BD}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",color:TX}}/>
+                  <Btn onClick={e=>{e.preventDefault();searchPhotos();}} style={{background:BDK,color:WH,padding:"11px 18px",fontSize:14,borderRadius:10}}>{kitLoad?"...":"Go"}</Btn>
                 </div>
                 {kitRes.length===0&&!kitLoad&&(
                   <>
@@ -608,7 +603,7 @@ export default function App(){
               const pct=Math.round((wc/5)*100);
               const cover=d.photos[0]||d.inspo[0];
               return(
-                <div key={cat.id} className="card-hover" onClick={()=>{setActiveCat(cat);setScreen("cat");}} style={{background:WH,border:`1.5px solid ${BD}`,borderRadius:20,overflow:"hidden",position:"relative",minHeight:150,boxShadow:"0 2px 10px rgba(0,0,0,.05)"}}>
+                <div key={cat.id} className="card-hover" onClick={()=>openCat(cat)} style={{background:WH,border:`1.5px solid ${BD}`,borderRadius:20,overflow:"hidden",position:"relative",minHeight:150,boxShadow:"0 2px 10px rgba(0,0,0,.05)"}}>
                   {cover&&<img src={cover} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(.27)"}} alt=""/>}
                   <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:cat.color}}/>
                   <div style={{position:"relative",zIndex:1,padding:"18px 16px 16px"}}>
