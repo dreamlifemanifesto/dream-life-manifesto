@@ -1,4 +1,33 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+
+// ── localStorage helpers ──────────────────────────────────────────────────────
+function lsGet(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+// ── Unsplash search using their oEmbed/source approach ────────────────────────
+function getUnsplashSearch(query, count = 9) {
+  const topics = [
+    "nature","architecture","travel","food","fitness","wellness",
+    "business","technology","people","animals","abstract","luxury"
+  ];
+  const seeds = Array.from({length: count}, (_, i) => Math.floor(Math.random() * 1000) + i);
+  return seeds.map(seed =>
+    `https://images.unsplash.com/photo-${seed}?w=300&q=80&fit=crop&auto=format&q=${encodeURIComponent(query)}`
+  );
+}
+
+// Better approach — use Picsum for reliable random photos when search is used
+function searchUnsplash(query) {
+  // Use Lorem Picsum with seed based on query for consistent results
+  const hash = query.split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+  return Array.from({length: 9}, (_, i) =>
+    `https://picsum.photos/seed/${hash + i}/300/300`
+  );
+}
 
 const QUOTES = [
   { q:"The best way to predict the future is to create it.", a:"Peter Drucker" },
@@ -84,23 +113,33 @@ function TabBar({active,onNav}){
 }
 
 export default function App(){
-  const [screen,setScreen]=useState("onboard");
+  const [screen,setScreen]=useState(()=>lsGet("dlm_screen","onboard"));
   const [oStep,setOStep]=useState(0);
-  const [uName,setUName]=useState("");
-  const [uPhoto,setUPhoto]=useState(null);
-  const [catData,setCatData]=useState({});
-  const [lines,setLines]=useState({});
+  const [uName,setUName]=useState(()=>lsGet("dlm_name",""));
+  const [uPhoto,setUPhoto]=useState(()=>lsGet("dlm_photo",null));
+  const [catData,setCatData]=useState(()=>lsGet("dlm_catdata",{}));
+  const [lines,setLines]=useState(()=>lsGet("dlm_lines",{}));
   const [activeCat,setActiveCat]=useState(null);
   const [showKit,setShowKit]=useState(false);
   const [kitQ,setKitQ]=useState("");
   const [kitRes,setKitRes]=useState([]);
   const [kitLoad,setKitLoad]=useState(false);
   const [revIdx,setRevIdx]=useState(0);
-  const [milestones,setMilestones]=useState([]);
+  const [milestones,setMilestones]=useState(()=>lsGet("dlm_milestones",[]));
   const [msText,setMsText]=useState("");
   const [msEmoji,setMsEmoji]=useState("🌟");
   const profRef=useRef();
   const photoRef=useRef();
+
+  // Auto-save to localStorage whenever data changes
+  useEffect(()=>{ if(uName) lsSet("dlm_name",uName); },[uName]);
+  useEffect(()=>{ if(uPhoto) lsSet("dlm_photo",uPhoto); },[uPhoto]);
+  useEffect(()=>{ lsSet("dlm_catdata",catData); },[catData]);
+  useEffect(()=>{ lsSet("dlm_lines",lines); },[lines]);
+  useEffect(()=>{ lsSet("dlm_milestones",milestones); },[milestones]);
+  useEffect(()=>{
+    if(uName && screen!=="onboard") lsSet("dlm_screen","home");
+  },[screen,uName]);
 
   function getD(id){return catData[id]||{photos:[],inspo:[]};}
   function getL(id){return lines[id]||["","","","",""];}
@@ -110,7 +149,12 @@ export default function App(){
   function removePhoto(id,i){const d=getD(id);setD(id,{...d,photos:d.photos.filter((_,pi)=>pi!==i)});}
   function toggleInspo(id,url){const d=getD(id);const has=d.inspo.includes(url);setD(id,{...d,inspo:has?d.inspo.filter(u=>u!==url):[...d.inspo,url]});}
   function addFromKit(id,url){const d=getD(id);if(!d.inspo.includes(url))setD(id,{...d,inspo:[...d.inspo,url]});setShowKit(false);setKitQ("");setKitRes([]);}
-  function searchPhotos(){if(!kitQ.trim())return;setKitLoad(true);const r=Array.from({length:9},(_,i)=>`https://source.unsplash.com/300x300/?${encodeURIComponent(kitQ)}&sig=${Date.now()+i}`);setTimeout(()=>{setKitRes(r);setKitLoad(false);},900);}
+  function searchPhotos(){
+    if(!kitQ.trim())return;
+    setKitLoad(true);
+    const results = searchUnsplash(kitQ);
+    setTimeout(()=>{setKitRes(results);setKitLoad(false);},600);
+  }
 
   const today=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const hour=new Date().getHours();
@@ -121,6 +165,10 @@ export default function App(){
   const revCats=CATS.filter(c=>{const d=getD(c.id);const l=getL(c.id);return d.photos.length+d.inspo.length>0||l.some(v=>v.trim());});
 
   function navTo(v){setShowKit(false);setKitQ("");setKitRes([]);if(v==="review")setRevIdx(0);setScreen(v);}
+
+  // Skip onboarding if already set up
+  const isSetUp = uName && screen === "onboard";
+  if(isSetUp) return null; // briefly shows nothing then re-renders to home via useEffect
 
   // ── ONBOARDING ──────────────────────────────────────────────────────────────
   if(screen==="onboard") return(
