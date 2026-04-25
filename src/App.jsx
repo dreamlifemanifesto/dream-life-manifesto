@@ -246,81 +246,99 @@ function AuthScreen({onAuth}){
   );
 }
 
-// ── Share Card Modal ───────────────────────────────────────────────────────────
+// ── Share Modal with Web Share API ────────────────────────────────────────────
 function ShareModal({uName,milestones,lines,catData,onClose}){
   const [selCat,setSelCat]=useState(null);
   const [selAff,setSelAff]=useState(null);
+  const [sharing,setSharing]=useState(false);
+  const [shared,setShared]=useState(false);
 
-  // Find categories that have both a photo AND affirmations
-  const richCats=CATS.filter(c=>{
-    const d=catData[c.id]||{photos:[],inspo:[]};
-    const l=lines[c.id]||["","","","",""];
-    return (d.photos.length+d.inspo.length>0)&&l.some(v=>v.trim());
-  });
-
-  const activeCat=selCat||richCats[0]||CATS[0];
+  const richCats=CATS.filter(c=>{const d=catData[c.id]||{photos:[],inspo:[]};const l=lines[c.id]||["","","","",""];return(d.photos.length+d.inspo.length>0)&&l.some(v=>v.trim());});
+  const allCats=CATS.filter(c=>(lines[c.id]||[]).some(v=>v.trim()));
+  const displayCats=[...richCats,...allCats.filter(c=>!richCats.find(r=>r.id===c.id))];
+  const activeCat=selCat||(displayCats[0]||CATS[0]);
   const catD=catData[activeCat.id]||{photos:[],inspo:[]};
   const catPhotos=[...catD.photos,...catD.inspo];
   const catLines=(lines[activeCat.id]||[]).filter(v=>v.trim());
-  const activeAff=selAff!==null?selAff:(catLines[0]||null);
+  const activeAff=selAff||(catLines[0]||null);
   const bgPhoto=catPhotos[0]||null;
 
-  return(
-    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,.85)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
-      <style>{BASE}</style>
-      <p style={{color:"rgba(255,255,255,.6)",fontSize:12,marginBottom:12,textAlign:"center"}}>Screenshot to share your vision ✨</p>
+  async function handleShare(){
+    setSharing(true);
+    const text=`✨ ${activeAff||"I am manifesting my dream life."}\n\n— ${uName}'s Dream Life Manifesto${milestones.length>0?`\n${milestones.length} things manifested so far`:""}\n\ndreamlifemanifesto.vercel.app`;
+    try{
+      if(navigator.share){
+        await navigator.share({title:"My Dream Life Manifesto",text,url:"https://dreamlifemanifesto.vercel.app"});
+        setShared(true);setTimeout(onClose,1500);
+      }else{
+        await navigator.clipboard.writeText(text);
+        setShared(true);setTimeout(()=>setShared(false),2500);
+      }
+    }catch(e){}
+    setSharing(false);
+  }
 
-      {/* The share card */}
-      <div style={{width:"100%",maxWidth:360,borderRadius:24,overflow:"hidden",position:"relative",aspectRatio:"4/5",boxShadow:"0 20px 60px rgba(0,0,0,.5)",marginBottom:16}}>
-        {bgPhoto
-          ?<img src={bgPhoto} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
-          :<div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${activeCat.color},${activeCat.color}88)`}}/>}
-        <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,.92) 50%,rgba(0,0,0,.2) 100%)"}}/>
-        <div style={{position:"relative",zIndex:1,height:"100%",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:28}}>
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,.92)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');`}</style>
+
+      {/* Card */}
+      <div style={{width:"100%",maxWidth:340,borderRadius:24,overflow:"hidden",position:"relative",aspectRatio:"4/5",boxShadow:"0 20px 60px rgba(0,0,0,.6)",marginBottom:16,flexShrink:0}}>
+        {bgPhoto?<img src={bgPhoto} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
+          :<div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${activeCat.color}CC,#0C1A2E)`}}/>}
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,.95) 55%,rgba(0,0,0,.1) 100%)"}}/>
+        <div style={{position:"relative",zIndex:1,height:"100%",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:24}}>
           <div style={{fontSize:36,marginBottom:8}}>{activeCat.emoji}</div>
-          <p style={{color:activeCat.color,fontSize:11,letterSpacing:2,textTransform:"uppercase",fontWeight:700,marginBottom:8}}>{activeCat.label}</p>
-          {activeAff&&(
-            <h2 style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:"clamp(18px,5vw,26px)",color:WH,lineHeight:1.3,marginBottom:16}}>{activeAff}</h2>
-          )}
-          <div style={{display:"flex",alignItems:"center",gap:10,borderTop:"1px solid rgba(255,255,255,.2)",paddingTop:14}}>
-            <div style={{flex:1}}>
-              <p style={{color:WH,fontWeight:700,fontSize:14}}>{uName}</p>
-              <p style={{color:"rgba(255,255,255,.5)",fontSize:11}}>Dream Life Manifesto</p>
+          <p style={{color:activeCat.color,fontSize:10,letterSpacing:2.5,textTransform:"uppercase",fontWeight:700,marginBottom:8}}>{activeCat.label}</p>
+          {activeAff&&<p style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:"clamp(16px,4.5vw,22px)",color:"white",lineHeight:1.4,marginBottom:16}}>{activeAff}</p>}
+          <div style={{borderTop:"1px solid rgba(255,255,255,.2)",paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <p style={{color:"white",fontWeight:700,fontSize:13}}>{uName}</p>
+              <p style={{color:"rgba(255,255,255,.45)",fontSize:11}}>Dream Life Manifesto</p>
             </div>
             {milestones.length>0&&(
-              <div style={{background:"rgba(255,255,255,.15)",borderRadius:12,padding:"6px 12px",textAlign:"center"}}>
-                <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:WH,fontWeight:700}}>{milestones.length}</div>
-                <div style={{fontSize:9,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:.5}}>manifested</div>
+              <div style={{background:"rgba(255,255,255,.12)",borderRadius:10,padding:"6px 12px",textAlign:"center"}}>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:"white",fontWeight:700}}>{milestones.length}</div>
+                <div style={{fontSize:9,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:.5}}>manifested</div>
               </div>
             )}
           </div>
-          <p style={{color:"rgba(255,255,255,.3)",fontSize:10,marginTop:10,letterSpacing:.5}}>dreamlifemanifesto.vercel.app</p>
+          <p style={{color:"rgba(255,255,255,.25)",fontSize:10,marginTop:8}}>dreamlifemanifesto.vercel.app</p>
         </div>
       </div>
 
-      {/* Category selector */}
-      {richCats.length>1&&(
-        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",justifyContent:"center"}}>
-          {richCats.map(c=>(
-            <button key={c.id} onClick={()=>{setSelCat(c);setSelAff(null);}} style={{background:selCat?.id===c.id||(!selCat&&c.id===richCats[0]?.id)?c.color:"rgba(255,255,255,.15)",border:"none",color:WH,borderRadius:20,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+      {/* Category picker */}
+      {displayCats.length>1&&(
+        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",justifyContent:"center",maxWidth:360}}>
+          {displayCats.slice(0,6).map(c=>(
+            <button key={c.id} onClick={()=>{setSelCat(c);setSelAff(null);}} style={{background:(selCat?.id===c.id||((!selCat)&&c.id===displayCats[0].id))?c.color:"rgba(255,255,255,.12)",border:"none",color:"white",borderRadius:20,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
               {c.emoji} {c.label.split(" ")[0]}
             </button>
           ))}
         </div>
       )}
 
-      {/* Affirmation selector */}
+      {/* Affirmation picker */}
       {catLines.length>1&&(
-        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12,width:"100%",maxWidth:360}}>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14,width:"100%",maxWidth:340}}>
           {catLines.map((a,i)=>(
-            <button key={i} onClick={()=>setSelAff(a)} style={{background:activeAff===a?"rgba(255,255,255,.25)":"rgba(255,255,255,.08)",border:`1px solid ${activeAff===a?"rgba(255,255,255,.4)":"rgba(255,255,255,.1)"}`,color:WH,borderRadius:10,padding:"8px 14px",fontSize:12,cursor:"pointer",textAlign:"left",lineHeight:1.4}}>
-              {a.length>60?a.slice(0,60)+"...":a}
+            <button key={i} onClick={()=>setSelAff(a)} style={{background:activeAff===a?"rgba(255,255,255,.2)":"rgba(255,255,255,.06)",border:`1px solid ${activeAff===a?"rgba(255,255,255,.3)":"rgba(255,255,255,.08)"}`,color:"white",borderRadius:10,padding:"9px 14px",fontSize:12,cursor:"pointer",textAlign:"left",lineHeight:1.4}}>
+              {a.length>55?a.slice(0,55)+"...":a}
             </button>
           ))}
         </div>
       )}
 
-      <button onClick={onClose} style={{background:"rgba(255,255,255,.15)",border:"none",color:WH,borderRadius:12,padding:"12px 32px",fontSize:14,fontWeight:600,cursor:"pointer"}}>Close</button>
+      {/* Share + Close buttons */}
+      <div style={{display:"flex",gap:10,width:"100%",maxWidth:340}}>
+        <button onClick={onClose} style={{flex:1,background:"rgba(255,255,255,.1)",border:"none",color:"white",borderRadius:12,padding:"14px",fontSize:14,fontWeight:600,cursor:"pointer"}}>Close</button>
+        <button onClick={handleShare} disabled={sharing} style={{flex:2,background:shared?"#10B981":"#D4962A",border:"none",color:"white",borderRadius:12,padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer",transition:"background .3s"}}>
+          {shared?"Shared! ✓":sharing?"...":"📤 Share This Vision"}
+        </button>
+      </div>
+      <p style={{color:"rgba(255,255,255,.3)",fontSize:11,marginTop:10,textAlign:"center"}}>
+        {shared?"Copied! Paste into Instagram, WhatsApp or anywhere.":"Opens your share sheet — Instagram, WhatsApp, Messages & more"}
+      </p>
     </div>
   );
 }
@@ -737,17 +755,13 @@ export default function App(){
           </div>
           <div className="rev">
             <div style={{fontSize:48,marginBottom:16}}>{cat.emoji}</div>
-            <p style={{color:cat.color,fontSize:11,letterSpacing:3,textTransform:"uppercase",marginBottom:10,fontWeight:700}}>{cat.label}</p>
+            <p style={{color:cat.color,fontSize:11,letterSpacing:3,textTransform:"uppercase",marginBottom:16,fontWeight:700}}>{cat.label}</p>
             {written.length>0
-              ?<h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(22px,5vw,38px)",color:WH,lineHeight:1.25,marginBottom:20}}>{written[0]}</h2>
-              :<h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(22px,5vw,36px)",color:WH,lineHeight:1.2,marginBottom:20}}>Your {cat.label} vision is taking shape.</h2>}
-            {written.slice(1,4).map((v,i)=>(
-              <div key={i} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:cat.color,marginTop:8,flexShrink:0}}/>
-                <span style={{color:"rgba(255,255,255,.65)",fontSize:15,lineHeight:1.6}}>{v}</span>
-              </div>
-            ))}
-            <p style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:14,color:"rgba(255,255,255,.35)",lineHeight:1.7,marginTop:24}}>"{cat.quote}" — {cat.author}</p>
+              ? written.slice(0,4).map((v,i)=>(
+                <p key={i} style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(16px,4vw,24px)",color:WH,lineHeight:1.4,marginBottom:14,opacity:i===0?1:0.75}}>{v}</p>
+              ))
+              :<p style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(20px,5vw,32px)",color:WH,lineHeight:1.3,marginBottom:20}}>Your {cat.label} vision is taking shape.</p>}
+            <p style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:14,color:"rgba(255,255,255,.35)",lineHeight:1.7,marginTop:20}}>"{cat.quote}" — {cat.author}</p>
           </div>
           <div style={{display:"flex",gap:12}}>
             {revIdx>0&&<Btn onClick={()=>setRevIdx(i=>i-1)} style={{flex:1,background:"rgba(255,255,255,.1)",color:WH,border:"1px solid rgba(255,255,255,.2)"}}>← Prev</Btn>}
