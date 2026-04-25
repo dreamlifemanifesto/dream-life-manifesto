@@ -166,9 +166,9 @@ export default function App(){
 
   function navTo(v){setShowKit(false);setKitQ("");setKitRes([]);if(v==="review")setRevIdx(0);setScreen(v);}
 
-  // Skip onboarding if already set up
-  const isSetUp = uName && screen === "onboard";
-  if(isSetUp) return null; // briefly shows nothing then re-renders to home via useEffect
+  // If already set up, go straight to home
+  const startScreen = uName ? "home" : "onboard";
+  if(screen === "onboard" && uName) { setScreen("home"); return null; }
 
   // ── ONBOARDING ──────────────────────────────────────────────────────────────
   if(screen==="onboard") return(
