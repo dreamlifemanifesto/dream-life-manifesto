@@ -128,8 +128,11 @@ export default function App(){
   const [milestones,setMilestones]=useState(()=>lsGet("dlm_milestones",[]));
   const [msText,setMsText]=useState("");
   const [msEmoji,setMsEmoji]=useState("🌟");
+  const [editProfile,setEditProfile]=useState(false);
+  const [editName,setEditName]=useState("");
   const profRef=useRef();
   const photoRef=useRef();
+  const kitRef=useRef();
 
   // Auto-save to localStorage whenever data changes
   useEffect(()=>{ if(uName) lsSet("dlm_name",uName); },[uName]);
@@ -152,8 +155,40 @@ export default function App(){
   function searchPhotos(){
     if(!kitQ.trim())return;
     setKitLoad(true);
-    const results = searchUnsplash(kitQ);
-    setTimeout(()=>{setKitRes(results);setKitLoad(false);},600);
+    // Use Unsplash with specific photo IDs per keyword category
+    const keywordMap = {
+      fitness:["1571019613454-1cb2f99b2d8b","1534438327276-14e5300c3a48","1517836357463-d25dfeac3438","1490645935967-10de6ba17061","1506629082955-511b1aa562c8","1547592166-23ac45744acd","1574680096145-d05b474e2155","1549060279-7e168fcee0c2"],
+      health:["1498837167922-ddd27525d352","1571019613454-1cb2f99b2d8b","1490645935967-10de6ba17061","1517836357463-d25dfeac3438","1506629082955-511b1aa562c8","1547592166-23ac45744acd"],
+      travel:["1507525428034-b723cf961d3e","1476514525535-07fb3b4ae5f1","1488085061387-422e29b40080","1539650116574-75c0c6d73f6e","1483729558449-99ef09a8c325","1506929562872-bb421503ef21","1504150558240-0b4fd8946624","1530521954074-e0a103ceff5c"],
+      luxury:["1544636331-e26879cd4d9b","1563013544-824ae1b704d3","1604594849809-dfedbc827105","1560520653-9e0e4c89eb11","1571771894821-ce9b6c11b08e","1518458028785-8fbcd101ebb9","1514432324607-a09d9b4aefdd"],
+      home:["1600596542815-ffad4c1539a9","1512917774080-9991f1c4c750","1613490493576-7fde63acd811","1560185893-a55cbc8c57e8","1582268611958-ebfd161ef9cf","1618221118493-9cfa1a1c00da"],
+      nature:["1447752875215-b2761acb3c5d","1506905925346-21bda4d32df4","1476514525535-07fb3b4ae5f1","1483729558449-99ef09a8c325","1504150558240-0b4fd8946624","1441974231531-c6227db76b6e"],
+      business:["1507003211169-0a1dd7228f2d","1460925895917-afdab827c52f","1553877522-43269d4ea984","1521737604893-d14cc237f11d","1559136555-9303baea8ebd","1664575602554-2087b04935a5"],
+      family:["1529156069898-49953e39b3ac","1491438590914-bc09fcaaf77a","1522673607200-164d1b6ce486","1511988617509-a57c8a288659","1506863530036-1efeddceb993","1516589178581-6cd7833ae3b2"],
+      money:["1604594849809-dfedbc827105","1544636331-e26879cd4d9b","1560520653-9e0e4c89eb11","1563013544-824ae1b704d3","1571771894821-ce9b6c11b08e","1518458028785-8fbcd101ebb9"],
+      spiritual:["1499209974431-9dddcece7f88","1528715471579-d1bcf0ba5e83","1518241353330-0f7941c2d9b5","1519834785169-98be25ec3f84","1447752875215-b2761acb3c5d","1506905925346-21bda4d32df4"],
+      car:["1544636331-e26879cd4d9b","1503376780353-7e6692767b70","1493238792000-8113da705763","1542282088-fe8426682b8f","1558618666-fcd25c85cd64","1571171637578-41bc2dd41cd2"],
+      house:["1600596542815-ffad4c1539a9","1512917774080-9991f1c4c750","1613490493576-7fde63acd811","1560185893-a55cbc8c57e8","1568605114967-8130f3a36994","1570129477492-45c003edd2be"],
+      plane:["1436491865332-7a61a109cc05","1556388158-158ea5ccacbd","1474302770737-173ee21bab63","1530521954074-e0a103ceff5c","1464037866556-6812c9d1c72e","1542296332-2e4473faf563"],
+    };
+    const q = kitQ.toLowerCase();
+    let ids = null;
+    for(const [key,val] of Object.entries(keywordMap)){
+      if(q.includes(key)){ids=val;break;}
+    }
+    if(!ids){
+      // fallback — use picsum with hash
+      const hash = kitQ.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+      const results = Array.from({length:9},(_,i)=>`https://picsum.photos/seed/${hash+i*7}/300/300`);
+      setTimeout(()=>{setKitRes(results);setKitLoad(false);if(kitRef.current)kitRef.current.scrollIntoView({behavior:"smooth",block:"nearest"});},600);
+      return;
+    }
+    const results = ids.slice(0,9).map(id=>`https://images.unsplash.com/photo-${id}?w=300&q=80&fit=crop`);
+    setTimeout(()=>{
+      setKitRes(results);
+      setKitLoad(false);
+      if(kitRef.current) kitRef.current.scrollIntoView({behavior:"smooth",block:"nearest"});
+    },600);
   }
 
   const today=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
@@ -296,7 +331,7 @@ export default function App(){
 
             {/* Search kit */}
             {showKit&&(
-              <div className="fade" style={{background:WH,border:`1px solid ${BD}`,borderRadius:16,padding:18,marginBottom:16}}>
+              <div ref={kitRef} className="fade" style={{background:WH,border:`1px solid ${BD}`,borderRadius:16,padding:18,marginBottom:16}}>
                 <p style={{fontWeight:700,fontSize:13,color:BDK,marginBottom:12}}>Find inspiration photos</p>
                 <div style={{display:"flex",gap:8,marginBottom:14}}>
                   <input value={kitQ} onChange={e=>setKitQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPhotos()} placeholder={`Search "${cat.label}" photos...`} style={{flex:1,background:BG,border:`1.5px solid ${BD}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",color:TX}}/>
@@ -535,10 +570,13 @@ export default function App(){
       <div className="page-wrap">
         <div style={{background:`linear-gradient(135deg,${BDK},${BL})`,padding:"48px 20px 28px"}}>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
-            {uPhoto
-              ?<img src={uPhoto} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",border:"3px solid rgba(255,255,255,.6)"}} alt=""/>
-              :<div style={{width:56,height:56,borderRadius:"50%",background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>✨</div>}
-            <div>
+            <div style={{position:"relative",cursor:"pointer"}} onClick={()=>{setEditName(uName);setEditProfile(true);}}>
+              {uPhoto
+                ?<img src={uPhoto} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",border:"3px solid rgba(255,255,255,.6)"}} alt=""/>
+                :<div style={{width:56,height:56,borderRadius:"50%",background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>✨</div>}
+              <div style={{position:"absolute",bottom:0,right:0,background:GD,borderRadius:"50%",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>✏️</div>
+            </div>
+            <div style={{flex:1}}>
               <p style={{color:"rgba(255,255,255,.55)",fontSize:12,marginBottom:2}}>{today}</p>
               <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(18px,4vw,24px)",color:WH,lineHeight:1.15}}>Good {greeting}, <em>{uName}</em></h2>
             </div>
@@ -597,6 +635,34 @@ export default function App(){
         </div>
       </div>
       <TabBar active={screen} onNav={navTo}/>
+
+      {/* Edit Profile Modal */}
+      {editProfile&&(
+        <div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"flex-end"}}>
+          <div style={{background:WH,borderRadius:"24px 24px 0 0",padding:28,width:"100%",maxHeight:"80vh",overflowY:"auto"}}>
+            <h3 style={{fontFamily:"'Playfair Display',serif",fontSize:22,marginBottom:20,color:TX}}>Edit Profile</h3>
+            <input ref={profRef} type="file" accept="image/*"
+              onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{setUPhoto(ev.target.result);lsSet("dlm_photo",ev.target.result);};r.readAsDataURL(f);}}
+              style={{display:"none"}}/>
+            <div style={{textAlign:"center",marginBottom:20}}>
+              <div onClick={()=>profRef.current.click()} style={{display:"inline-block",position:"relative",cursor:"pointer"}}>
+                {uPhoto
+                  ?<img src={uPhoto} style={{width:90,height:90,borderRadius:"50%",objectFit:"cover",border:`3px solid ${BDK}`}}/>
+                  :<div style={{width:90,height:90,borderRadius:"50%",background:BLT,border:`2px dashed ${BDK}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>+</div>}
+                <div style={{position:"absolute",bottom:0,right:0,background:GD,borderRadius:"50%",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>✏️</div>
+              </div>
+              <p style={{color:MT,fontSize:12,marginTop:8}}>Tap to change photo</p>
+            </div>
+            <p style={{fontSize:13,color:MT,marginBottom:8,fontWeight:600}}>Your name</p>
+            <input value={editName} onChange={e=>setEditName(e.target.value)}
+              style={{width:"100%",background:BG,border:`1.5px solid ${BD}`,borderRadius:10,padding:"13px 14px",fontSize:16,outline:"none",marginBottom:20,color:TX}}/>
+            <div style={{display:"flex",gap:10}}>
+              <Btn onClick={()=>setEditProfile(false)} style={{flex:1,background:"transparent",color:MT,border:`1.5px solid ${BD}`}}>Cancel</Btn>
+              <Btn onClick={()=>{if(editName.trim()){setUName(editName.trim());lsSet("dlm_name",editName.trim());}setEditProfile(false);}} style={{flex:2,background:BDK,color:WH,padding:14}}>Save Changes</Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </>
   );
